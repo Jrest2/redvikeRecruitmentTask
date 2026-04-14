@@ -1,12 +1,12 @@
 import { AsyncLocalStorage } from "async_hooks";
 
 const asyncContext = new AsyncLocalStorage<{
-  userId: number;
+  userId: string;
   email: string;
 }>();
 
 export const setRequestContext = (
-  userId: number,
+  userId: string,
   email: string,
   fn: () => void | Promise<void>,
 ) => asyncContext.run({ userId, email }, fn);

@@ -1,75 +1,257 @@
-## Description
+# Redvike API
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Backend service for amenity management, reservations, and CSV import.
 
-## Project setup
+Built with:
+- NestJS
+- Prisma
+- PostgreSQL
+- Swagger
 
-```bash
-$ npm install
+## What The API Does
+
+- user registration and login
+- CRUD for amenities
+- CRUD for reservations
+- bookings by amenity and day
+- bookings by user grouped by day
+- CSV upload with parsing to JSON
+
+## Data Model
+
+The project currently uses three main entities:
+
+- `User`
+- `Amenity`
+- `Reservation`
+
+Reservation fields:
+- `id`
+- `amenityId`
+- `userId`
+- `startTime`
+- `endTime`
+
+Both `startTime` and `endTime` are stored as `DateTime` in the database.
+
+## Requirements
+
+- Node.js 20+
+- npm
+- PostgreSQL
+
+## Environment Variables
+
+Create a `.env` file in the project root.
+
+Example:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/redvike?schema=public
+JWT_SECRET=super-secret-key
+PORT=3000
 ```
 
-## Compile and run the project
+## Install
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
 ```
 
-## Run tests
+## Database Setup
+
+Generate and apply Prisma migrations:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npx prisma migrate dev
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Regenerate Prisma client if needed:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npx prisma generate
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## Run The App
 
-## Resources
+Development:
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+npm run start:dev
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Production build:
 
-## Support
+```bash
+npm run build
+npm run start:prod
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+The application runs on:
 
-## Stay in touch
+```text
+http://localhost:3000
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Swagger
 
-## License
+Swagger UI is available at:
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```text
+http://localhost:3000/api
+```
+
+The API uses a global prefix:
+
+```text
+/api
+```
+
+## Main Endpoints
+
+### Auth
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+
+### Amenity
+
+- `POST /api/amenity`
+- `GET /api/amenity`
+- `GET /api/amenity/:id`
+- `PATCH /api/amenity/:id`
+- `DELETE /api/amenity/:id`
+
+### Reservation
+
+- `POST /api/reservation`
+- `GET /api/reservation`
+- `GET /api/reservation/:id`
+- `PATCH /api/reservation/:id`
+- `DELETE /api/reservation/:id`
+
+Additional read endpoints:
+
+- `GET /api/reservation/amenities/:amenityId/bookings?day=2026-04-14T00:00:00.000Z`
+- `GET /api/reservation/users/:userId/bookings`
+
+#### Amenity Bookings By Day Response
+
+Returns a list sorted by `startTime` ascending with:
+
+- `reservationId`
+- `userId`
+- `startTime` in `HH:mm`
+- `durationMinutes`
+- `amenityName`
+
+#### User Bookings Grouped By Day
+
+Returns data grouped like this:
+
+```json
+[
+  {
+    "date": "2026-04-14",
+    "reservations": [
+      {
+        "reservationId": "reservation-id",
+        "amenityId": "amenity-id",
+        "amenityName": "Conference Room",
+        "startTime": "09:00",
+        "endTime": "10:30",
+        "durationMinutes": 90
+      }
+    ]
+  }
+]
+```
+
+This endpoint uses raw SQL through Prisma for the grouped booking read model.
+
+### CSV Import
+
+- `POST /api/csv/parse`
+
+Request format:
+- `multipart/form-data`
+- file field name: `file`
+
+Rules:
+- only `.csv` files are accepted
+- file size limit: 20 MB
+- supports both `,` and `;` delimiters
+- first row is treated as headers
+
+Example response:
+
+```json
+[
+  {
+    "id": "1",
+    "name": "Conference Room"
+  }
+]
+```
+
+## Error Handling
+
+The project includes:
+
+- global exception handling
+- Prisma exception mapping
+- request id propagation
+- structured error responses
+- Nest `Logger` based logging for both `4xx` and `5xx`
+
+Error response shape:
+
+```json
+{
+  "statusCode": 400,
+  "message": "Only CSV files are allowed",
+  "error": "Bad Request",
+  "timestamp": "2026-04-14T12:00:00.000Z",
+  "path": "/api/csv/parse",
+  "requestId": "request-id"
+}
+```
+
+## Validation Notes
+
+- DTO validation is enabled globally with Nest `ValidationPipe`
+- reservation create/update expects ISO date strings
+- CSV parsing strips BOM and supports quoted values and escaped quotes
+
+## Scripts
+
+```bash
+npm run build
+npm run start
+npm run start:dev
+npm run start:prod
+npm run lint
+npm run test
+npm run test:e2e
+```
+
+## Tests
+
+Run unit tests:
+
+```bash
+npm test -- --runInBand
+```
+
+Run e2e tests:
+
+```bash
+npm run test:e2e
+```
+
+## Notes
+
+- Prisma client is generated into `generated/prisma`
+- Swagger is configured in `src/main.ts`
+- database access is implemented through Prisma
+- request-level errors are normalized by global exception filters

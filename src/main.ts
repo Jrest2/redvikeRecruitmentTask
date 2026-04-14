@@ -1,10 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as express from "express";
-import { ValidationPipe } from "@nestjs/common";
+import { Logger, ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { PrismaClientExceptionFilter } from "./prisma/prisma-client-exception.filter";
+import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 
 async function bootstrap() {
+  const logger = new Logger("Bootstrap");
   const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
   const app = await NestFactory.create(AppModule);
 
@@ -25,6 +28,10 @@ async function bootstrap() {
   app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
   app.enableCors({ methods });
+  app.useGlobalFilters(
+    new PrismaClientExceptionFilter(),
+    new AllExceptionsFilter(),
+  );
 
   // Налаштування Swagger ДО встановлення глобального префіксу
   const config = new DocumentBuilder()
@@ -44,9 +51,18 @@ async function bootstrap() {
     },
   });
 
-
-  console.log(`Swagger UI is available at http://localhost:${process.env.PORT ?? 3000}/api/docs`);
+  logger.log(
+    `Swagger UI is available at http://localhost:${process.env.PORT ?? 3000}/api`,
+  );
 
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+
+void bootstrap().catch((error: unknown) => {
+  const logger = new Logger("Bootstrap");
+  logger.error(
+    "Application failed to start",
+    error instanceof Error ? error.stack : undefined,
+  );
+  process.exit(1);
+});
