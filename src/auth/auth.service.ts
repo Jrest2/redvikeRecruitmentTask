@@ -38,7 +38,6 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = user;
     const tokens = await this.generateTokens(userWithoutPassword);
     return { user: userWithoutPassword, tokens };
@@ -51,15 +50,15 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      expiresIn: 3600, // 1 hour
+      expiresIn: 3600,
     };
   }
 
-  private async generateAccessToken(sub: number) {
+  private async generateAccessToken(sub: string) {
     return this.jwtService.signAsync({ sub });
   }
 
-  private async generateRefreshToken(sub: number): Promise<string> {
+  private async generateRefreshToken(sub: string): Promise<string> {
     return this.jwtService.signAsync({ sub }, { expiresIn: "7d" });
   }
 }
